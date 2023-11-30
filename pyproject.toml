@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "atelierpi"
+version = "0.1.0"
+description = "control everything"
+packages = [{include = "atelierpi"}]
+authors = ["wim"]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+kivy = "*"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api" 
