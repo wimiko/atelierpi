@@ -13,6 +13,16 @@ Config.set('graphics', 'height', '480')
 
 
 
+class Router(BoxLayout):
+    def __init__(self):
+        super().__init__()
+        buttons = GridLayout(cols=3)
+        
+        buttons.add_widget(Button(text="7"))
+        buttons.add_widget(Button(text="8"))
+        buttons.add_widget(Button(text="9"))
+        self.add_widget(buttons)
+
 class NumericInput(BoxLayout):
     orientation = 'vertical'
     def __init__(self):
@@ -47,11 +57,17 @@ class NumericInput(BoxLayout):
         print('ho')
         exit()
 
-class StepperApp(BoxLayout):
+class BoxJoint(BoxLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.add_widget(Button(text="1111"))
         self.add_widget(NumericInput())
+
+class StepperApp(PageLayout):
+    def __init__(self):
+        super().__init__(**kwargs)
+        self.add_widget(BoxJoint)
+        self.add_widget(Router)
 
 
 class MainApp(App):
