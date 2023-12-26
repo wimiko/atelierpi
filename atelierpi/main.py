@@ -1,3 +1,4 @@
+from collections import deque
 from kivy.app import App
 from kivy.uix.label import Label
 from kivy.uix.button import Button
@@ -12,7 +13,7 @@ from kivy.uix.screenmanager import Screen, ScreenManager
 from kivy.core.window import Window
 from kivy.uix.vkeyboard import VKeyboard
 
-#Config.set('graphics', 'fullscreen', 1)
+Config.set('graphics', 'fullscreen', 1)
 Config.set('graphics', 'width', '800')
 Config.set('graphics', 'height', '480')
 
@@ -123,10 +124,47 @@ class BoxJointDrawing(Button):
     text = "hohoho"
     background_color = [1,0,0,1]
 
-class BoxJointScreen(Screen):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+class ScreenNavigation(BoxLayout):
+    orientation = "horizontal"
+    size = (100, 100)
+    size_hint = (1, None)
+    def __init__(self, manager):
+        super().__init__()
+        self.manager = manager
+
+        left = Button(text='<')
+        right = Button(text='>')
+        close = Button(text='x')
+        left.bind(on_press=self.prev_cb)
+        right.bind(on_press=self.next_cb)
+        close.bind(on_press=self.close_cb)
         
+        self.add_widget(left)
+        self.add_widget(right)
+        self.add_widget(close)
+
+    def next_cb(self, instance):
+        self.manager.current = self.manager.next()
+
+    def prev_cb(self, instance):
+        self.manager.current = self.manager.previous()
+
+    def close_cb(self, instance):
+        App.get_running_app().stop()
+
+class ScreenBase(Screen):
+    def __init__(self, manager, **kwargs):
+        super().__init__(**kwargs)
+        self.layout = BoxLayout(orientation="vertical")
+        self.layout.add_widget(ScreenNavigation(manager))
+        self.add_widget(self.layout)
+        self.add_body(self.layout)
+
+    def add_body(self, container):
+        pass
+
+class BoxJointScreen(ScreenBase):
+    def add_body(self, container: BoxLayout):
         self.params = ParamList()
         self.params.add_param("kerf:")
         self.params.add_param("width:")
@@ -135,42 +173,25 @@ class BoxJointScreen(Screen):
         self.params.add_param("offset")
         self.keyboard = NumericKeyboard(self.params)
 
-        col = BoxLayout(orientation='vertical')
-        row = BoxLayout(orientation='horizontal', size=(500,500), size_hint=(1, None))
+        row = BoxLayout(orientation='horizontal', size=(400,400), size_hint=(1, None))
         row.add_widget(self.params)
         row.add_widget(self.keyboard)
-        col.add_widget(BoxJointDrawing())
-        col.add_widget(row)
-        self.add_widget(col)
 
-class RouterScreen(Screen):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        box = BoxLayout(orientation='vertical')
-        self.value = TextInput()
-        box.add_widget(self.value)
-        #box.add_widget(NumericKeyboard(on_key_up = self.key_up))
+        container.add_widget(BoxJointDrawing())
+        container.add_widget(row)
 
-        self.add_widget(box)
-
-    def key_up(self, keyboard, keycode, *args):
-        print(keyboard, keycode, args)
-        text = self.value.text
-        if keycode == 'backspace':
-            text = text[:-1]
-        else:
-            text += str(keycode)
-        self.value.text = text
-
+class RouterScreen(ScreenBase):
+    pass
 
 class MainApp(App):
     screen_manager = None
     def build(self):
         self.screen_manager = ScreenManager()
-        self.screen_manager.add_widget(BoxJointScreen(name="BoxJoint"))
-        self.screen_manager.add_widget(RouterScreen(name="Router"))
+        self.screen_manager.add_widget(BoxJointScreen(self.screen_manager, name="BoxJoint"))
+        self.screen_manager.add_widget(RouterScreen(self.screen_manager, name="Router"))
         self.screen_manager.current = 'BoxJoint'
         return self.screen_manager
+        
 
 if __name__ == '__main__':
     MainApp().run()
