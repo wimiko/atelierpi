@@ -47,19 +47,9 @@ class NumericInput(BoxLayout):
 
         self.add_widget(buttons)
 
-#class NumericKeyboard(VKeyboard):
-#    background_color = [1,0,0,1]
-#    docked=True
-#    size=(600, 500)
-#    def __init__(self, **kwargs):
-#        super().__init__(**kwargs)
-#        self.layout = "numeric.json"
-#
+
 class NumericKeyboard(BoxLayout):
     orientation='vertical'
-    #background_color = [1,0,0,1]
-    #docked=True
-    #size=(600, 500)
     def __init__(self, paramlist, **kwargs):
         super().__init__(**kwargs)
         self.paramlist = paramlist
@@ -103,17 +93,15 @@ class ParamList(BoxLayout):
 
     def add_param(self, name):
         text = TextInput()
-        button = Button()
         label = Label(text=name)
         self._handels[name] = text
         def cb(instance):
             text.focus=True
             self.focussed=instance
-        button.bind(on_release=cb)
+        text.bind(on_release=cb)
         row = BoxLayout(orientation='horizontal')
         row.add_widget(label)
         row.add_widget(text)
-        row.add_widget(button)
         self.rows.add_widget(row)
 
     def __getitem__(self, name):
@@ -126,7 +114,7 @@ class BoxJointDrawing(Button):
 
 class ScreenNavigation(BoxLayout):
     orientation = "horizontal"
-    size = (100, 100)
+    size = (100, 50)
     size_hint = (1, None)
     def __init__(self, manager):
         super().__init__()
@@ -173,7 +161,7 @@ class BoxJointScreen(ScreenBase):
         self.params.add_param("offset")
         self.keyboard = NumericKeyboard(self.params)
 
-        row = BoxLayout(orientation='horizontal', size=(400,400), size_hint=(1, None))
+        row = BoxLayout(orientation='horizontal', size=(400,200), size_hint=(1, None))
         row.add_widget(self.params)
         row.add_widget(self.keyboard)
 
