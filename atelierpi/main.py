@@ -12,6 +12,7 @@ from kivy.uix.widget import Widget
 from kivy.uix.screenmanager import Screen, ScreenManager
 from kivy.core.window import Window
 from kivy.uix.vkeyboard import VKeyboard
+from kivy.graphics import *
 
 Config.set('graphics', 'fullscreen', 1)
 Config.set('graphics', 'width', '800')
@@ -91,14 +92,18 @@ class ParamList(BoxLayout):
         self._handels = {}
         self.focussed=None
 
-    def add_param(self, name):
-        text = TextInput()
+    def add_param(self, name, label=None, default=0):
+        if label is None:
+            label = name
+        text = TextInput(ids=name)
         label = Label(text=name)
         self._handels[name] = text
-        def cb(instance):
-            text.focus=True
-            self.focussed=instance
-        text.bind(on_release=cb)
+        def cb(instance, value):
+            if value:
+                self.focussed=instance
+        text.text = str(default)
+        text.bind(focus=cb)
+        text.bind(text=self.on_text_change)
         row = BoxLayout(orientation='horizontal')
         row.add_widget(label)
         row.add_widget(text)
@@ -107,10 +112,42 @@ class ParamList(BoxLayout):
     def __getitem__(self, name):
         return self._handels[name]
 
+    def on_text_change(self, instance, value):
+        print(instance.ids)
+
+    def as_dict(self):
+        return {label: instance.texhgzt for label, instance in self._handels.items()}
 
 class BoxJointDrawing(Button):
-    text = "hohoho"
-    background_color = [1,0,0,1]
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+    
+    def on_size(self, *args, **kwargs):
+        self.update_canvas()
+
+    def update_canvas(self):
+        self.canvas.clear()
+        self.draw_box([10, 10, 10, 10])
+
+    def draw_box(self, widths, total=None):
+        if total is None:
+            total = sum(widths)
+        scale = 400 / total
+        widths = [width * scale for width in widths]
+        pin = True
+        offset = self.pos
+        with self.canvas:
+            for width in widths:
+                if pin:
+                    height = 40
+                else:
+                    height = 80
+                Color(1., 0, 0)
+                Rectangle(pos=offset, size=(width, height))
+                offset = (offset[0] + width, offset[1])
+                pin = not pin
+
+
 
 class ScreenNavigation(BoxLayout):
     orientation = "horizontal"
@@ -154,11 +191,12 @@ class ScreenBase(Screen):
 class BoxJointScreen(ScreenBase):
     def add_body(self, container: BoxLayout):
         self.params = ParamList()
-        self.params.add_param("kerf:")
-        self.params.add_param("width:")
-        self.params.add_param("pin size:")
-        self.params.add_param("hole size:")
-        self.params.add_param("offset")
+        self.params.add_param("kerf", default=3.5)
+        self.params.add_param("width")
+        self.params.add_param("start_offset", "start offset")
+        self.params.add_param("end_offset", "end offset")
+        self.params.add_param("pins", 4)
+        self.params.add_param("ratio", "pin/hole ratio", 1)
         self.keyboard = NumericKeyboard(self.params)
 
         row = BoxLayout(orientation='horizontal', size=(400,200), size_hint=(1, None))
@@ -167,6 +205,33 @@ class BoxJointScreen(ScreenBase):
 
         container.add_widget(BoxJointDrawing())
         container.add_widget(row)
+
+    def calculate(self, params):
+        widths = []
+        index=0
+        width = params['width'] - params['start_offset'] - params['end_offset']
+        npins = params['pins']
+        nholes = params['pins'] # -1 ??
+        pin_width = width / (npins + nholes * params['ratio'])
+        hole_width = pin_width * params['ratio']
+
+        widths.append(params['start_offset'])
+        pin = True
+        for i in [npins + nholes]:
+            last = (i == npins + nholes - 1)
+            
+            if pin:
+                widths.append(pin_width)
+                if last and (params['end_offset'] != 0):
+                    widths.append(params['end_offset'])
+            else:
+                if last and (params['end_offset'] != 0):
+                    widths.append(hole_width + params['end_offset'])
+                else:
+                    widths.append(hole_width)
+        returns widths
+
+
 
 class RouterScreen(ScreenBase):
     pass
