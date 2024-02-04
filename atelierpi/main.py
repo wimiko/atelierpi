@@ -85,17 +85,27 @@ class NumericKeyboard(BoxLayout):
         self.target = target
 
 class ParamList(BoxLayout):
-    def __init__(self, **kwargs):
+    def __init__(self, update_cb=None, **kwargs):
         super().__init__(**kwargs)
         self.rows = BoxLayout(orientation='vertical')
         self.add_widget(self.rows)
+        self.update = Button(text='update')
+        self.rows.add_widget(self.update)
+        self.update.bind(on_press=self._update)
         self._handels = {}
         self.focussed=None
+        self._data = {}
+        self.update_cb = update_cb
+
+    def _update(self, *args, **kwargs):
+        self._data = self.as_dict()
+        if self.update_cb:
+            self.update_cb(self._data)
 
     def add_param(self, name, label=None, default=0):
         if label is None:
             label = name
-        text = TextInput(ids=name)
+        text = TextInput()
         label = Label(text=name)
         self._handels[name] = text
         def cb(instance, value):
@@ -103,7 +113,6 @@ class ParamList(BoxLayout):
                 self.focussed=instance
         text.text = str(default)
         text.bind(focus=cb)
-        text.bind(text=self.on_text_change)
         row = BoxLayout(orientation='horizontal')
         row.add_widget(label)
         row.add_widget(text)
@@ -112,26 +121,31 @@ class ParamList(BoxLayout):
     def __getitem__(self, name):
         return self._handels[name]
 
-    def on_text_change(self, instance, value):
-        print(instance.ids)
-
     def as_dict(self):
-        return {label: instance.texhgzt for label, instance in self._handels.items()}
+        return {label: float(instance.text) for label, instance in self._handels.items()}
+
 
 class BoxJointDrawing(Button):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.widths = []
     
     def on_size(self, *args, **kwargs):
         self.update_canvas()
 
     def update_canvas(self):
         self.canvas.clear()
-        self.draw_box([10, 10, 10, 10])
+        self.draw_box(self.widths)
+
+    def update(self, widths):
+        self.widths = list(widths)
+        self.update_canvas()
 
     def draw_box(self, widths, total=None):
         if total is None:
             total = sum(widths)
+        if total == 0:
+            return
         scale = 400 / total
         widths = [width * scale for width in widths]
         pin = True
@@ -190,34 +204,41 @@ class ScreenBase(Screen):
 
 class BoxJointScreen(ScreenBase):
     def add_body(self, container: BoxLayout):
-        self.params = ParamList()
+        self.params = ParamList(update_cb=self.update_box)
         self.params.add_param("kerf", default=3.5)
-        self.params.add_param("width")
+        self.params.add_param("width", default=500)
         self.params.add_param("start_offset", "start offset")
         self.params.add_param("end_offset", "end offset")
-        self.params.add_param("pins", 4)
+        self.params.add_param("pins", default=4)
         self.params.add_param("ratio", "pin/hole ratio", 1)
         self.keyboard = NumericKeyboard(self.params)
+
 
         row = BoxLayout(orientation='horizontal', size=(400,200), size_hint=(1, None))
         row.add_widget(self.params)
         row.add_widget(self.keyboard)
-
-        container.add_widget(BoxJointDrawing())
+        self.drawing = BoxJointDrawing()
+        container.add_widget(self.drawing)
         container.add_widget(row)
+
+    def update_box(self, data):
+        self.boxdata = data
+        self.widths = self.calculate(data)
+        self.drawing.update(self.widths)
 
     def calculate(self, params):
         widths = []
         index=0
         width = params['width'] - params['start_offset'] - params['end_offset']
-        npins = params['pins']
-        nholes = params['pins'] # -1 ??
+        npins = int(params['pins'])
+        nholes = int(params['pins']) # -1 ??
         pin_width = width / (npins + nholes * params['ratio'])
         hole_width = pin_width * params['ratio']
+        print(params['ratio'], pin_width, hole_width)
 
         widths.append(params['start_offset'])
         pin = True
-        for i in [npins + nholes]:
+        for i in range(npins + nholes):
             last = (i == npins + nholes - 1)
             
             if pin:
@@ -229,7 +250,9 @@ class BoxJointScreen(ScreenBase):
                     widths.append(hole_width + params['end_offset'])
                 else:
                     widths.append(hole_width)
-        returns widths
+            pin = not pin
+        print(widths)
+        return widths
 
 
 
